@@ -132,7 +132,16 @@ uninstall_theme() {
   else
     echo "Пакетный менеджер не найден. Принудительное удаление файлов..."
     rm -rf "$THEME_DIR"
-    rm -f /etc/config/proton2025
+  fi
+
+  # Удаляем конфиг UCI темы
+  rm -f /etc/config/proton2025
+
+  # Сброс темы в uci к теме по умолчанию (bootstrap)
+  if [ "$(uci get luci.main.mediaurlbase 2>/dev/null)" = "/luci-static/proton2025" ]; then
+    echo "Сброс темы LuCI к теме по умолчанию (bootstrap)..."
+    uci set luci.main.mediaurlbase="/luci-static/bootstrap" 2>/dev/null
+    uci commit luci 2>/dev/null
   fi
 
   clear_luci_cache

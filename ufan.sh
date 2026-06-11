@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VERSION="1.4"
+VERSION="1.5"
 UFAN_VERSION="2.0.2"
 BIN="/usr/sbin/ufan"
 INIT="/etc/init.d/ufan"
@@ -173,9 +173,11 @@ install_fan_monitoring() {
     if [ -f "$COLLECTD_CONF" ]; then
       if ! grep -qF "$FAN_SCRIPT" "$COLLECTD_CONF"; then
         echo "Настройка $COLLECTD_CONF..."
+        if ! grep -q "^[ 	]*LoadPlugin[ 	][ 	]*exec" "$COLLECTD_CONF"; then
+          echo -e "\nLoadPlugin exec" >> "$COLLECTD_CONF"
+        fi
         cat >> "$COLLECTD_CONF" << 'EOF'
 
-LoadPlugin exec
 <Plugin exec>
         Exec "nobody:nogroup" "/usr/share/collectd/pwmfan.sh"
 </Plugin>

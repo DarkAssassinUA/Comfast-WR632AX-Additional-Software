@@ -289,8 +289,8 @@ check_ufan_updates() {
   if [ -n "$latest_ufan" ]; then
     installed_ufan=$(get_installed_ufan_version)
     # Очищаем префиксы (v. / v) для корректного сравнения версий
-    clean_latest=$(echo "$latest_ufan" | sed 's/[^0-9.]//g')
-    clean_installed=$(echo "$installed_ufan" | sed 's/[^0-9.]//g')
+    clean_latest=$(echo "$latest_ufan" | cut -d'-' -f1 | cut -d'_' -f1 | sed 's/[^0-9.]//g')
+    clean_installed=$(echo "$installed_ufan" | cut -d'-' -f1 | cut -d'_' -f1 | sed 's/[^0-9.]//g')
 
     if [ "$clean_latest" != "$clean_installed" ] && [ -n "$clean_latest" ]; then
       printf "\n[Обновление uFan] Доступна новая версия uFan: $latest_ufan (установлена: $installed_ufan).\nОбновить бинарный файл uFan? (y/n) [y]: "

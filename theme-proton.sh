@@ -200,8 +200,8 @@ check_theme_updates() {
   
   if [ -n "$latest_version" ]; then
     installed_version=$(get_installed_version)
-    clean_latest=$(echo "$latest_version" | sed 's/[^0-9.]//g')
-    clean_installed=$(echo "$installed_version" | sed 's/[^0-9.]//g')
+    clean_latest=$(echo "$latest_version" | cut -d'-' -f1 | cut -d'_' -f1 | sed 's/[^0-9.]//g')
+    clean_installed=$(echo "$installed_version" | cut -d'-' -f1 | cut -d'_' -f1 | sed 's/[^0-9.]//g')
 
     if [ "$clean_latest" != "$clean_installed" ] && [ -n "$clean_latest" ]; then
       printf "\n[Обновление темы] Доступна новая версия темы: $latest_version (установлена: $installed_version).\nОбновить тему? (y/n) [y]: "

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VERSION="1.5"
+VERSION="1.6"
 UFAN_VERSION="2.0.2"
 BIN="/usr/sbin/ufan"
 INIT="/etc/init.d/ufan"
@@ -9,6 +9,7 @@ FAN_SCRIPT="/usr/share/collectd/pwmfan.sh"
 FAN_LUCI_JS="/www/luci-static/resources/statistics/rrdtool/definitions/exec.js"
 COLLECTD_CONF="/etc/collectd.conf"
 UFAN_VER_FILE="/etc/ufan.version"
+LUCI_STATS_CONF="/etc/config/luci_statistics"
 
 # Функция получения установленной версии uFan
 get_installed_ufan_version() {
@@ -169,8 +170,19 @@ install_fan_monitoring() {
   fi
 
   if [ "$wget_ok" -eq 1 ]; then
-    # Настройка collectd.conf
-    if [ -f "$COLLECTD_CONF" ]; then
+    # Настройка collectd
+    if [ -f "$LUCI_STATS_CONF" ]; then
+      echo "Настройка collectd через UCI (luci_statistics)..."
+      uci set luci_statistics.collectd_exec=statistics
+      uci set luci_statistics.collectd_exec.enable='1'
+      uci set luci_statistics.pwmfan=collectd_exec_input
+      uci set luci_statistics.pwmfan.cmdline="/usr/share/collectd/pwmfan.sh"
+      uci set luci_statistics.pwmfan.cmduser="nobody"
+      uci set luci_statistics.pwmfan.cmdgroup="nogroup"
+      uci commit luci_statistics
+      echo "Перезапуск службы luci_statistics..."
+      /etc/init.d/luci_statistics restart 2>/dev/null
+    elif [ -f "$COLLECTD_CONF" ]; then
       if ! grep -qF "$FAN_SCRIPT" "$COLLECTD_CONF"; then
         echo "Настройка $COLLECTD_CONF..."
         if ! grep -q "^[ 	]*LoadPlugin[ 	][ 	]*exec" "$COLLECTD_CONF"; then
@@ -178,15 +190,17 @@ install_fan_monitoring() {
         fi
         cat >> "$COLLECTD_CONF" << 'EOF'
 
+#BEGIN_PWMFAN
 <Plugin exec>
         Exec "nobody:nogroup" "/usr/share/collectd/pwmfan.sh"
 </Plugin>
+#END_PWMFAN
 EOF
       fi
       echo "Перезапуск службы collectd..."
       service collectd restart 2>/dev/null || /etc/init.d/collectd restart 2>/dev/null
     else
-      echo "Предупреждение: $COLLECTD_CONF не найден. collectd не настроен."
+      echo "Предупреждение: ни UCI luci_statistics, ни $COLLECTD_CONF не найдены. collectd не настроен."
     fi
     echo "Установка мониторинга вентилятора успешно завершена."
     ask_sysupgrade
@@ -212,7 +226,21 @@ uninstall_all() {
 
   echo "Удаление файлов мониторинга вентилятора..."
   rm -f "$FAN_SCRIPT" "$FAN_LUCI_JS"
+
+  # Удаляем настройки из UCI
+  if [ -f "$LUCI_STATS_CONF" ]; then
+    echo "Удаление настроек pwmfan из UCI..."
+    uci delete luci_statistics.pwmfan 2>/dev/null
+    uci commit luci_statistics 2>/dev/null
+    /etc/init.d/luci_statistics restart 2>/dev/null
+  fi
+
+  # Удаляем настройки из collectd.conf
   if [ -f "$COLLECTD_CONF" ]; then
+    echo "Очистка $COLLECTD_CONF..."
+    # Удаляем блок с комментариями
+    sed -i '/#BEGIN_PWMFAN/,/#END_PWMFAN/d' "$COLLECTD_CONF" 2>/dev/null
+    # Удаляем строку старого формата (если осталась)
     sed -i '\#/usr/share/collectd/pwmfan.sh#d' "$COLLECTD_CONF" 2>/dev/null
     echo "Перезапуск службы collectd..."
     service collectd restart 2>/dev/null || /etc/init.d/collectd restart 2>/dev/null

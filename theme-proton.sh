@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VERSION="1.0"
+VERSION="1.1"
 THEME_DIR="/www/luci-static/proton2025"
 
 # Функция получения установленной версии темы
